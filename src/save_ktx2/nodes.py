@@ -36,7 +36,7 @@ class SaveKtx2:
         results = list()
         for (batch_number, image) in enumerate(images):
             H, W, _ = image.shape
-            img = image.mul(255).clamp(0, 255).to(torch.uint8).cpu().contiguous().numpy()
+            img = image.mul(255).clamp(0, 255).to(torch.uint8).flip(0).cpu().contiguous().numpy().tobytes()
             filename_with_batch_num = filename.replace("%batch_num%", str(batch_number))
             fmt = VkFormat.VK_FORMAT_R8G8B8_SRGB
 
@@ -47,7 +47,7 @@ class SaveKtx2:
                 base_depth=1,
                 vk_format=fmt,
             ), KtxTextureCreateStorage.ALLOC)
-            tex_astc.set_image_from_memory(0, 0, 0, img.tobytes())
+            tex_astc.set_image_from_memory(0, 0, 0, img)
             tex_astc.compress_astc(KtxAstcParams(
                 block_dimension=KtxPackAstcBlockDimension.D8x8,
                 mode=KtxPackAstcEncoderMode.LDR,
@@ -71,7 +71,7 @@ class SaveKtx2:
                 base_depth=1,
                 vk_format=fmt,
             ), KtxTextureCreateStorage.ALLOC)
-            tex_dxt1.set_image_from_memory(0, 0, 0, img.tobytes())
+            tex_dxt1.set_image_from_memory(0, 0, 0, img)
             tex_dxt1.compress_basis(KtxBasisParams(
                 compression_level=5,
                 quality_level=255,
