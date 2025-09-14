@@ -77,7 +77,7 @@ class SaveKtx2:
                 quality_level=255,
                 thread_count=os.cpu_count(),
                 uastc=True,
-                uastc_flags=KtxPackUastcFlagBits.VERY_SLOW
+                # uastc_flags=KtxPackUastcFlagBits.SLOWER
             ))
             tex_dxt1.transcode_basis(KtxTranscodeFmt.BC1_RGB, KtxTranscodeFlagBits.HIGH_QUALITY)
             file = f"{filename_with_batch_num}_{counter:05}_.dxt1.ktx2"
