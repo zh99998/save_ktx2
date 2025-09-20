@@ -104,6 +104,7 @@ class SaveKtx2:
                 # uastc_flags=KtxPackUastcFlagBits.SLOWER
             ))
             tex_dxt1.transcode_basis(KtxTranscodeFmt.BC1_RGB, KtxTranscodeFlagBits.HIGH_QUALITY)
+            tex_dxt1.deflate_zstd(22)
             file = f"{filename_with_batch_num}.png.dxt1.ktx2"
             tex_dxt1.write_to_named_file(os.path.join(full_output_folder, file))
             results.append({
