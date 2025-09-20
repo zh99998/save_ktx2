@@ -14,6 +14,9 @@ from pyktx.ktx_pack_uastc_flag_bits import KtxPackUastcFlagBits
 from pyktx.ktx_transcode_fmt import KtxTranscodeFmt
 from pyktx.ktx_transcode_flag_bits import KtxTranscodeFlagBits
 from pyktx.vk_format import VkFormat
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
+from comfy.cli_args import args
 
 class SaveKtx2:
     @classmethod
@@ -34,11 +37,32 @@ class SaveKtx2:
     def save_images(self, images, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None):
         full_output_folder, filename, counter, subfolder, filename_prefix = folder_paths.get_save_image_path(filename_prefix, folder_paths.get_output_directory(), images[0].shape[1], images[0].shape[0])
         results = list()
+
         for (batch_number, image) in enumerate(images):
             H, W, _ = image.shape
-            img = image.mul(255).clamp(0, 255).to(torch.uint8).flip(0).cpu().contiguous().numpy().tobytes()
+            img_data = image.mul(255).clamp(0, 255).to(torch.uint8).cpu().contiguous().numpy()
             filename_with_batch_num = filename.replace("%batch_num%", str(batch_number))
+
+            img_png = Image.fromarray(img_data)
+            metadata = None
+            if not args.disable_metadata:
+                metadata = PngInfo()
+                if prompt is not None:
+                    metadata.add_text("prompt", json.dumps(prompt))
+                if extra_pnginfo is not None:
+                    for x in extra_pnginfo:
+                        metadata.add_text(x, json.dumps(extra_pnginfo[x]))
+
+            file = f"{filename_with_batch_num}.png"
+            img_png.save(os.path.join(full_output_folder, file), pnginfo=metadata, compress_level=4)
+            results.append({
+                "filename": file,
+                "subfolder": subfolder,
+                "type": "output"
+            })
+
             fmt = VkFormat.VK_FORMAT_R8G8B8_SRGB
+            img_ktx2 = img_data[::-1].tobytes()
 
             tex_astc = KtxTexture2.create(KtxTextureCreateInfo(
                 gl_internal_format=None,
@@ -47,7 +71,7 @@ class SaveKtx2:
                 base_depth=1,
                 vk_format=fmt,
             ), KtxTextureCreateStorage.ALLOC)
-            tex_astc.set_image_from_memory(0, 0, 0, img)
+            tex_astc.set_image_from_memory(0, 0, 0, img_ktx2)
             tex_astc.compress_astc(KtxAstcParams(
                 block_dimension=KtxPackAstcBlockDimension.D8x8,
                 mode=KtxPackAstcEncoderMode.LDR,
@@ -56,7 +80,7 @@ class SaveKtx2:
                 thread_count=os.cpu_count(),
                 verbose=True
             ))
-            file = f"{filename_with_batch_num}_{counter:05}_.astc.ktx2"
+            file = f"{filename_with_batch_num}.png.astc.ktx2"
             tex_astc.write_to_named_file(os.path.join(full_output_folder, file))
             results.append({
                 "filename": file,
@@ -71,7 +95,7 @@ class SaveKtx2:
                 base_depth=1,
                 vk_format=fmt,
             ), KtxTextureCreateStorage.ALLOC)
-            tex_dxt1.set_image_from_memory(0, 0, 0, img)
+            tex_dxt1.set_image_from_memory(0, 0, 0, img_ktx2)
             tex_dxt1.compress_basis(KtxBasisParams(
                 compression_level=5,
                 quality_level=255,
@@ -80,15 +104,13 @@ class SaveKtx2:
                 # uastc_flags=KtxPackUastcFlagBits.SLOWER
             ))
             tex_dxt1.transcode_basis(KtxTranscodeFmt.BC1_RGB, KtxTranscodeFlagBits.HIGH_QUALITY)
-            file = f"{filename_with_batch_num}_{counter:05}_.dxt1.ktx2"
+            file = f"{filename_with_batch_num}.png.dxt1.ktx2"
             tex_dxt1.write_to_named_file(os.path.join(full_output_folder, file))
             results.append({
                 "filename": file,
                 "subfolder": subfolder,
                 "type": "output"
             })
-
-            counter += 1
 
         return { "ui": { "images": results } }
 
