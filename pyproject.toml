@@ -14,7 +14,7 @@ license = {text = "GNU General Public License v3"}
 requires-python = ">=3.10"
 classifiers = []
 dependencies = [
-    "pyktx>=4.4.0",
+    "pyktx==4.4.0",
 ]
 
 
